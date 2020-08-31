@@ -64,7 +64,7 @@ cat
 dog
 ...
 ```
-8、将train.py的NUM_CLASSSES修改成所需要分的类的个数（无需+1），运行train.py即可开始训练。
+8、运行train.py即可开始训练。
 
 ### mAP目标检测精度计算更新
 更新了get_gt_txt.py、get_dr_txt.py和get_map.py文件。  
