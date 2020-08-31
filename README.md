@@ -9,17 +9,16 @@
 5. [参考资料 Reference](#Reference)
 
 ### 所需环境
-tensorflow-gpu==1.13.1  
-keras==2.1.5  
+torch==1.2.0
 
-### 文件下载
-训练所需的resnet50_coco_best_v2.1.0.h5可以在百度云下载。  
-链接: https://pan.baidu.com/s/1qS7_QozWsdpjYTcnMKG50w  
-提取码: i8w8  
+### 文件下载 
+训练所需的retinanet_resnet50.pth可以在百度云下载。   
+链接: https://pan.baidu.com/s/1xoJ2HLlzqRFBVYmujYyh3A    
+提取码: krr5
 
 ### 预测步骤
 #### 1、使用预训练权重
-a、下载完库后解压，在百度网盘下载RFB_weights.h5，放入model_data，运行predict.py，输入  
+a、下载完库后解压，在百度网盘下载retinanet_resnet50.pth，放入model_data，运行predict.py，输入  
 ```python
 img/street.jpg
 ```
@@ -30,10 +29,12 @@ a、按照训练步骤训练。
 b、在retinanet.py文件里面，在如下部分修改model_path和classes_path使其对应训练好的文件；**model_path对应logs文件夹下面的权值文件，classes_path是model_path对应分的类**。  
 ```python
 _defaults = {
-    "model_path": 'model_data/resnet50_coco_best_v2.1.0.h5',
-    "classes_path": 'model_data/coco_classes.txt',
-    "model_image_size" : (600, 600, 3),
+    "model_path": 'model_data/retinanet_resnet50.pth',
+    "classes_path": 'model_data/voc_classes.txt',
+    "phi": 2,
     "confidence": 0.5,
+    "cuda": True,
+    "image_size": [600,600]
 }
 ```
 c、运行predict.py，输入  
