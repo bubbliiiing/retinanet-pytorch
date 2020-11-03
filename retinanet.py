@@ -33,12 +33,13 @@ def preprocess_input(image):
 #--------------------------------------------#
 class RetinaNet(object):
     _defaults = {
-        "model_path": 'model_data/retinanet_resnet50.pth',
-        "classes_path": 'model_data/voc_classes.txt',
-        "phi": 2,
-        "confidence": 0.5,
-        "cuda": True,
-        "image_size": [600,600]
+        "model_path"    : 'model_data/retinanet_resnet50.pth',
+        "classes_path"  : 'model_data/voc_classes.txt',
+        "phi"           : 2,
+        "confidence"    : 0.5,
+        "iou"           : 0.3,
+        "cuda"          : True,
+        "image_size"    : [600,600]
     }
 
     @classmethod
@@ -113,7 +114,7 @@ class RetinaNet(object):
             detection = torch.cat([regression,classification],axis=-1)
             batch_detections = non_max_suppression(detection, len(self.class_names),
                                                     conf_thres=self.confidence,
-                                                    nms_thres=0.3)
+                                                    nms_thres=self.iou)
         try:
             batch_detections = batch_detections[0].cpu().numpy()
         except:
