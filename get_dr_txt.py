@@ -16,7 +16,7 @@ from retinanet import RetinaNet
 from nets.retinanet import Retinanet
 from PIL import Image,ImageFont, ImageDraw
 from utils.utils import non_max_suppression, bbox_iou, decodebox, letterbox_image, retinanet_correct_boxes
-
+from tqdm import tqdm
 
 def preprocess_input(image):
     image /= 255
@@ -31,7 +31,8 @@ class mAP_RetinaNet(RetinaNet):
     #   检测图片
     #---------------------------------------------------#
     def detect_image(self,image_id,image):
-        self.confidence = 0.05
+        self.confidence = 0.01
+        self.iou = 0.5
         f = open("./input/detection-results/"+image_id+".txt","w") 
         image_shape = np.array(np.shape(image)[0:2])
 
@@ -88,13 +89,12 @@ if not os.path.exists("./input/images-optional"):
     os.makedirs("./input/images-optional")
 
 
-for image_id in image_ids:
+for image_id in tqdm(image_ids):
     image_path = "./VOCdevkit/VOC2007/JPEGImages/"+image_id+".jpg"
     image = Image.open(image_path)
     # 开启后在之后计算mAP可以可视化
     # image.save("./input/images-optional/"+image_id+".jpg")
     retinanet.detect_image(image_id,image)
-    print(image_id," done!")
     
 
 print("Conversion completed!")
