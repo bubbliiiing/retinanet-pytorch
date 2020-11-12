@@ -176,9 +176,9 @@ if __name__ == "__main__":
 
         train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]))
         val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]))
-        gen = DataLoader(train_dataset, batch_size=Batch_size, num_workers=4, pin_memory=True,
+        gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
-        gen_val = DataLoader(val_dataset, batch_size=Batch_size, num_workers=4,pin_memory=True, 
+        gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
 
         epoch_size = num_train//Batch_size
@@ -204,9 +204,9 @@ if __name__ == "__main__":
 
         train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]))
         val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]))
-        gen = DataLoader(train_dataset, batch_size=Batch_size, num_workers=4, pin_memory=True,
+        gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
-        gen_val = DataLoader(val_dataset, batch_size=Batch_size, num_workers=4,pin_memory=True, 
+        gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
 
         epoch_size = num_train//Batch_size
