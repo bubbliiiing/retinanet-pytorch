@@ -2,19 +2,22 @@
 #       对数据集进行训练
 #-------------------------------------#
 import os
-import numpy as np
 import time
+
+import numpy as np
 import torch
-from torch.autograd import Variable
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from utils.dataloader import retinanet_dataset_collate, RetinanetDataset
+from tqdm import tqdm
+
 from nets.retinanet import Retinanet
 from nets.retinanet_training import FocalLoss
-from tqdm import tqdm
+from utils.dataloader import RetinanetDataset, retinanet_dataset_collate
+
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
@@ -31,11 +34,10 @@ def get_classes(classes_path):
     return class_names
 
 def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoch,cuda):
-    total_r_loss = 0
-    total_c_loss = 0
     total_loss = 0
     val_loss = 0
-    start_time = time.time()
+
+    net.train()
     with tqdm(total=epoch_size,desc=f'Epoch {epoch + 1}/{Epoch}',postfix=dict,mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen):
             if iteration >= epoch_size:
@@ -50,25 +52,24 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
                     targets = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)) for ann in targets]
 
             optimizer.zero_grad()
-
+            #-------------------#
+            #   获得预测结果
+            #-------------------#
             _, regression, classification, anchors = net(images)
-            loss, c_loss, r_loss = focal_loss(classification, regression, anchors, targets, cuda=cuda)
-            loss.backward()
+            #-------------------#
+            #   计算损失
+            #-------------------#
+            loss, _, _ = focal_loss(classification, regression, anchors, targets, cuda=cuda)
 
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1e-2)
             optimizer.step()
             
-            total_loss += loss
-            total_r_loss += r_loss
-            total_c_loss += c_loss
-            waste_time = time.time() - start_time
+            total_loss += loss.item()
 
-            pbar.set_postfix(**{'total_loss': total_loss.item() / (iteration + 1), 
-                                'lr'        : get_lr(optimizer),
-                                'step/s'    : waste_time})
+            pbar.set_postfix(**{'total_loss': total_loss / (iteration + 1), 
+                                'lr'        : get_lr(optimizer)})
             pbar.update(1)
-
-            start_time = time.time()
 
     net.eval()
     print('Start Validation')
@@ -85,13 +86,16 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
                 else:
                     images_val = Variable(torch.from_numpy(images_val).type(torch.FloatTensor))
                     targets_val = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)) for ann in targets_val]
+                    
                 optimizer.zero_grad()
                 _, regression, classification, anchors = net(images_val)
-                loss,_,_ = focal_loss(classification, regression, anchors, targets_val, cuda=cuda)
-                val_loss += loss
-            pbar.set_postfix(**{'total_loss': val_loss.item() / (iteration + 1)})
-            pbar.update(1)
-    net.train()
+                loss, _, _ = focal_loss(classification, regression, anchors, targets_val, cuda=cuda)
+
+                val_loss += loss.item()
+
+                pbar.set_postfix(**{'total_loss': val_loss / (iteration + 1)})
+                pbar.update(1)
+                
     print('Finish Validation')
     print('Epoch:'+ str(epoch+1) + '/' + str(Epoch))
     print('Total Loss: %.4f || Val Loss: %.4f ' % (total_loss/(epoch_size+1),val_loss/(epoch_size_val+1)))
@@ -102,6 +106,15 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
 
 if __name__ == "__main__":
     #--------------------------------------------#
+    #   是否使用Cuda
+    #   没有GPU可以设置成False
+    #--------------------------------------------#
+    Cuda = True
+    #--------------------------------------------#
+    #   输入图像大小
+    #--------------------------------------------#
+    input_shape = (600, 600)
+    #--------------------------------------------#
     #   phi == 0 : resnet18 
     #   phi == 1 : resnet34 
     #   phi == 2 : resnet50 
@@ -109,28 +122,27 @@ if __name__ == "__main__":
     #   phi == 4 : resnet152 
     #--------------------------------------------#
     phi = 2
-    Cuda = True
     #--------------------------------------------#
-    #   输入图像大小
-    #--------------------------------------------#
-    input_shape = (600, 600)
-    annotation_path = '2007_train.txt'
-
-    #--------------------------------------------#
-    #   训练自己的模型需要修改txt
+    #   训练前一定要注意注意修改
+    #   classes_path对应的txt的内容
+    #   修改成自己需要分的类
     #--------------------------------------------#
     classes_path = 'model_data/voc_classes.txt'   
+    #--------------------------------------------#
+    #   获取classes和数量
+    #--------------------------------------------#
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
     
-    # 创建模型
+    #----------------------------------------------------#
+    #   获取Retinanet模型
+    #----------------------------------------------------#
     model = Retinanet(num_classes, phi, False)
     
-    #-------------------------------------------#
-    #   权值文件的下载请看README
-    #-------------------------------------------#
+    #----------------------------------------------------#
+    #   权值文件请看README，百度网盘下载
+    #----------------------------------------------------#
     model_path = "model_data/retinanet_resnet50.pth"
-    # 加快模型训练的效率
     print('Loading weights into state dict...')
     model_dict = model.state_dict()
     pretrained_dict = torch.load(model_path)
@@ -148,7 +160,15 @@ if __name__ == "__main__":
 
     focal_loss = FocalLoss()
 
-    # 0.1用于验证，0.9用于训练
+    #----------------------------------------------------#
+    #   获得图片路径和标签
+    #----------------------------------------------------#
+    annotation_path = '2007_train.txt'
+    #----------------------------------------------------------------------#
+    #   验证集的划分在train.py代码里面进行
+    #   2007_test.txt和2007_val.txt里面没有内容是正常的。训练不会使用到。
+    #   当前划分方式下，验证集和训练集的比例为1:9
+    #----------------------------------------------------------------------#
     val_split = 0.1
     with open(annotation_path) as f:
         lines = f.readlines()
@@ -167,16 +187,19 @@ if __name__ == "__main__":
     #   提示OOM或者显存不足请调小Batch_size
     #------------------------------------------------------#
     if True:
+        #--------------------------------------------#
+        #   BATCH_SIZE不要太小，不然训练效果很差
+        #--------------------------------------------#
         lr = 1e-4
-        Batch_size = 4
+        Batch_size = 8
         Init_Epoch = 0
-        Freeze_Epoch = 25
+        Freeze_Epoch = 50
         
         optimizer = optim.Adam(net.parameters(),lr)
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
 
-        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]))
-        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]))
+        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
+        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
         gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
         gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
@@ -195,16 +218,19 @@ if __name__ == "__main__":
             lr_scheduler.step(val_loss)
 
     if True:
+        #--------------------------------------------#
+        #   BATCH_SIZE不要太小，不然训练效果很差
+        #--------------------------------------------#
         lr = 1e-5
-        Batch_size = 2
-        Freeze_Epoch = 25
-        Unfreeze_Epoch = 50
+        Batch_size = 4
+        Freeze_Epoch = 50
+        Unfreeze_Epoch = 100
 
         optimizer = optim.Adam(net.parameters(),lr)
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
 
-        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]))
-        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]))
+        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
+        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
         gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
         gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 

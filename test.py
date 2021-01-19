@@ -4,8 +4,8 @@
 #   和get_map.py
 #--------------------------------------------#
 import torch
-from nets.retinanet import Retinanet
-from nets.retinanet import Resnet
+
+from nets.retinanet import Resnet, Retinanet
 
 if __name__ == '__main__':
     inputs = torch.randn(5, 3, 512, 512)
