@@ -7,16 +7,12 @@ import os
 
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
 from PIL import Image
-from torch.autograd import Variable
 from tqdm import tqdm
 
 from retinanet import RetinaNet
-from utils.utils import (bbox_iou, decodebox, letterbox_image,
+from utils.utils import (decodebox, letterbox_image,
                          non_max_suppression, retinanet_correct_boxes)
-
 
 '''
 这里设置的门限值较低是因为计算map需要用到不同门限条件下的Recall和Precision值。

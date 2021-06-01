@@ -1,13 +1,7 @@
-from __future__ import absolute_import, division, print_function
-
 import math
-import pdb
 
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
-from torch.autograd import Variable
 
 model_urls = {
 'resnet18': 'https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth',

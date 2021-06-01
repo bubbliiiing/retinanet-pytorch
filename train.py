@@ -1,21 +1,15 @@
 #-------------------------------------#
 #       对数据集进行训练
 #-------------------------------------#
-import os
-import time
-
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from nets.retinanet import Retinanet
-from nets.retinanet_training import FocalLoss
+from nets.retinanet_training import FocalLoss, LossHistory, weights_init
 from utils.dataloader import RetinanetDataset, retinanet_dataset_collate
 
 
@@ -38,6 +32,7 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
     val_loss = 0
 
     net.train()
+    print('Start Train')
     with tqdm(total=epoch_size,desc=f'Epoch {epoch + 1}/{Epoch}',postfix=dict,mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen):
             if iteration >= epoch_size:
@@ -45,11 +40,11 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
             images, targets = batch[0], batch[1]
             with torch.no_grad():
                 if cuda:
-                    images = Variable(torch.from_numpy(images).type(torch.FloatTensor)).cuda()
-                    targets = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)).cuda() for ann in targets]
+                    images = torch.from_numpy(images).type(torch.FloatTensor).cuda()
+                    targets = [torch.from_numpy(ann).type(torch.FloatTensor).cuda() for ann in targets]
                 else:
-                    images = Variable(torch.from_numpy(images).type(torch.FloatTensor))
-                    targets = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)) for ann in targets]
+                    images = torch.from_numpy(images).type(torch.FloatTensor)
+                    targets = [torch.from_numpy(ann).type(torch.FloatTensor) for ann in targets]
 
             optimizer.zero_grad()
             #-------------------#
@@ -81,11 +76,11 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
 
             with torch.no_grad():
                 if cuda:
-                    images_val = Variable(torch.from_numpy(images_val).type(torch.FloatTensor)).cuda()
-                    targets_val = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)).cuda() for ann in targets_val]
+                    images_val = torch.from_numpy(images_val).type(torch.FloatTensor).cuda()
+                    targets_val = [torch.from_numpy(ann).type(torch.FloatTensor).cuda() for ann in targets_val]
                 else:
-                    images_val = Variable(torch.from_numpy(images_val).type(torch.FloatTensor))
-                    targets_val = [Variable(torch.from_numpy(ann).type(torch.FloatTensor)) for ann in targets_val]
+                    images_val = torch.from_numpy(images_val).type(torch.FloatTensor)
+                    targets_val = [torch.from_numpy(ann).type(torch.FloatTensor) for ann in targets_val]
                     
                 optimizer.zero_grad()
                 _, regression, classification, anchors = net(images_val)
@@ -96,6 +91,7 @@ def fit_one_epoch(net,focal_loss,epoch,epoch_size,epoch_size_val,gen,genval,Epoc
                 pbar.set_postfix(**{'total_loss': val_loss / (iteration + 1)})
                 pbar.update(1)
                 
+    loss_history.append_loss(total_loss/(epoch_size+1), val_loss/(epoch_size_val+1))
     print('Finish Validation')
     print('Epoch:'+ str(epoch+1) + '/' + str(Epoch))
     print('Total Loss: %.4f || Val Loss: %.4f ' % (total_loss/(epoch_size+1),val_loss/(epoch_size_val+1)))
@@ -138,7 +134,8 @@ if __name__ == "__main__":
     #   获取Retinanet模型
     #----------------------------------------------------#
     model = Retinanet(num_classes, phi, False)
-    
+    weights_init(model)
+
     #----------------------------------------------------#
     #   权值文件请看README，百度网盘下载
     #----------------------------------------------------#
@@ -159,7 +156,7 @@ if __name__ == "__main__":
         net = net.cuda()
 
     focal_loss = FocalLoss()
-
+    loss_history = LossHistory("logs/")
     #----------------------------------------------------#
     #   获得图片路径和标签
     #----------------------------------------------------#
@@ -190,23 +187,26 @@ if __name__ == "__main__":
         #--------------------------------------------#
         #   BATCH_SIZE不要太小，不然训练效果很差
         #--------------------------------------------#
-        lr = 1e-4
-        Batch_size = 8
-        Init_Epoch = 0
-        Freeze_Epoch = 50
+        lr              = 1e-4
+        Batch_size      = 8
+        Init_Epoch      = 0
+        Freeze_Epoch    = 50
         
-        optimizer = optim.Adam(net.parameters(),lr)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
+        optimizer       = optim.Adam(net.parameters(),lr)
+        lr_scheduler    = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
 
-        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
-        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
-        gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
+        train_dataset   = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
+        val_dataset     = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
+        gen             = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
-        gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
+        gen_val         = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
 
-        epoch_size = num_train//Batch_size
-        epoch_size_val = num_val//Batch_size
+        epoch_size      = num_train // Batch_size
+        epoch_size_val  = num_val // Batch_size
+
+        if epoch_size == 0 or epoch_size_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
         #------------------------------------#
         #   冻结一定部分训练
         #------------------------------------#
@@ -221,23 +221,26 @@ if __name__ == "__main__":
         #--------------------------------------------#
         #   BATCH_SIZE不要太小，不然训练效果很差
         #--------------------------------------------#
-        lr = 1e-5
-        Batch_size = 4
-        Freeze_Epoch = 50
-        Unfreeze_Epoch = 100
+        lr              = 1e-5
+        Batch_size      = 4
+        Freeze_Epoch    = 50
+        Unfreeze_Epoch  = 100
 
-        optimizer = optim.Adam(net.parameters(),lr)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
+        optimizer       = optim.Adam(net.parameters(),lr)
+        lr_scheduler    = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=2, verbose=True)
 
-        train_dataset = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
-        val_dataset = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
-        gen = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
+        train_dataset   = RetinanetDataset(lines[:num_train], (input_shape[0], input_shape[1]), True)
+        val_dataset     = RetinanetDataset(lines[num_train:], (input_shape[0], input_shape[1]), False)
+        gen             = DataLoader(train_dataset, shuffle=True, batch_size=Batch_size, num_workers=4, pin_memory=True,
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
-        gen_val = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
+        gen_val         = DataLoader(val_dataset, shuffle=True, batch_size=Batch_size, num_workers=4,pin_memory=True, 
                                 drop_last=True, collate_fn=retinanet_dataset_collate)
 
-        epoch_size = num_train//Batch_size
-        epoch_size_val = num_val//Batch_size
+        epoch_size      = num_train // Batch_size
+        epoch_size_val  = num_val // Batch_size
+
+        if epoch_size == 0 or epoch_size_val == 0:
+            raise ValueError("数据集过小，无法进行训练，请扩充数据集。")
         #------------------------------------#
         #   解冻后训练
         #------------------------------------#
