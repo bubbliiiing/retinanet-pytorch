@@ -54,7 +54,7 @@ _defaults = {
 ```python
 img/street.jpg
 ```  
-3. 在predict.py里面进行设置可以进行fps测试和video视频检测。
+4. 在predict.py里面进行设置可以进行fps测试和video视频检测。
 
 ## 训练步骤
 1. 本文使用VOC格式进行训练。  
