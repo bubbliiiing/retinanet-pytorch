@@ -68,17 +68,17 @@ class RegressionModel(nn.Module):
     def __init__(self, num_features_in, num_anchors=9, feature_size=256):
         super(RegressionModel, self).__init__()
 
-        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
-        self.act1 = nn.ReLU()
+        self.conv1  = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
+        self.act1   = nn.ReLU()
 
-        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act2 = nn.ReLU()
+        self.conv2  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act2   = nn.ReLU()
 
-        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act3 = nn.ReLU()
+        self.conv3  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act3   = nn.ReLU()
 
-        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act4 = nn.ReLU()
+        self.conv4  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act4   = nn.ReLU()
 
         self.output = nn.Conv2d(feature_size, num_anchors * 4, kernel_size=3, padding=1)
 
@@ -97,30 +97,28 @@ class RegressionModel(nn.Module):
 
         out = self.output(out)
 
-        # out is B x C x W x H, with C = 4*num_anchors
         out = out.permute(0, 2, 3, 1)
 
         return out.contiguous().view(out.shape[0], -1, 4)
 
-
 class ClassificationModel(nn.Module):
-    def __init__(self, num_features_in, num_anchors=9, num_classes=80, prior=0.01, feature_size=256):
+    def __init__(self, num_features_in, num_anchors=9, num_classes=80, feature_size=256):
         super(ClassificationModel, self).__init__()
 
         self.num_classes = num_classes
         self.num_anchors = num_anchors
 
-        self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
-        self.act1 = nn.ReLU()
+        self.conv1  = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
+        self.act1   = nn.ReLU()
 
-        self.conv2 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act2 = nn.ReLU()
+        self.conv2  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act2   = nn.ReLU()
 
-        self.conv3 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act3 = nn.ReLU()
+        self.conv3  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act3   = nn.ReLU()
 
-        self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
-        self.act4 = nn.ReLU()
+        self.conv4  = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
+        self.act4   = nn.ReLU()
 
         self.output = nn.Conv2d(feature_size, num_anchors * num_classes, kernel_size=3, padding=1)
         self.output_act = nn.Sigmoid()
@@ -144,17 +142,17 @@ class ClassificationModel(nn.Module):
         # out is B x C x W x H, with C = n_classes + n_anchors
         out1 = out.permute(0, 2, 3, 1)
 
-        batch_size, width, height, channels = out1.shape
+        batch_size, height, width, channels = out1.shape
 
-        out2 = out1.view(batch_size, width, height, self.num_anchors, self.num_classes)
+        out2 = out1.view(batch_size, height, width, self.num_anchors, self.num_classes)
 
         return out2.contiguous().view(x.shape[0], -1, self.num_classes)
 
 class Resnet(nn.Module):
-    def __init__(self, phi, load_weights=False):
+    def __init__(self, phi, pretrained=False):
         super(Resnet, self).__init__()
-        self.edition = [resnet18,resnet34,resnet50,resnet101,resnet152]
-        model = self.edition[phi](load_weights)
+        self.edition = [resnet18, resnet34, resnet50, resnet101, resnet152]
+        model = self.edition[phi](pretrained)
         del model.avgpool
         del model.fc
         self.model = model
@@ -172,11 +170,10 @@ class Resnet(nn.Module):
 
         return [feat1,feat2,feat3]
 
-class Retinanet(nn.Module):
-
-    def __init__(self, num_classes, phi, pretrain_weights=False):
-        super(Retinanet, self).__init__()
-        self.pretrain_weights = pretrain_weights
+class retinanet(nn.Module):
+    def __init__(self, num_classes, phi, pretrained=False):
+        super(retinanet, self).__init__()
+        self.pretrained = pretrained
         #-----------------------------------------#
         #   取出三个有效特征层，分别是C3、C4、C5
         #   假设输入图像为600,600,3
@@ -185,7 +182,7 @@ class Retinanet(nn.Module):
         #   C4     38,38,1024
         #   C5     19,19,2048
         #-----------------------------------------#
-        self.backbone_net = Resnet(phi,pretrain_weights)
+        self.backbone_net = Resnet(phi, pretrained)
         fpn_sizes = {
             0: [128, 256, 512],
             1: [128, 256, 512],
@@ -208,13 +205,13 @@ class Retinanet(nn.Module):
         #   Retinahead里面进行预测，获得回归预测结果和分类预测结果
         #   将所有特征层的预测结果进行堆叠
         #----------------------------------------------------------#
-        self.regressionModel = RegressionModel(256)
-        self.classificationModel = ClassificationModel(256, num_classes=num_classes)
+        self.regressionModel        = RegressionModel(256)
+        self.classificationModel    = ClassificationModel(256, num_classes=num_classes)
         self.anchors = Anchors()
         self._init_weights()
 
     def _init_weights(self):
-        if not self.pretrain_weights:
+        if not self.pretrained:
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
                     n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -253,8 +250,8 @@ class Retinanet(nn.Module):
         #   Retinahead里面进行预测，获得回归预测结果和分类预测结果
         #   将所有特征层的预测结果进行堆叠
         #----------------------------------------------------------#
-        regression = torch.cat([self.regressionModel(feature) for feature in features], dim=1)
-        classification = torch.cat([self.classificationModel(feature) for feature in features], dim=1)
+        regression      = torch.cat([self.regressionModel(feature) for feature in features], dim=1)
+        classification  = torch.cat([self.classificationModel(feature) for feature in features], dim=1)
 
         anchors = self.anchors(features)
 
