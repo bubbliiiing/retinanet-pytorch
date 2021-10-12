@@ -22,7 +22,7 @@
 torch==1.2.0
 
 ## 文件下载 
-训练所需的retinanet_resnet50.pth可以在百度云下载。   
+训练所需的retinanet_resnet50.pth和主干的权值可以在百度云下载。   
 链接: https://pan.baidu.com/s/1piH9dw2t4Tz4m7dTZq-N8g    
 提取码: 6ndw    
 
