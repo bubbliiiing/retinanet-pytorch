@@ -166,7 +166,7 @@ if __name__ == "__main__":
         start_epoch = Init_Epoch
         end_epoch   = Freeze_Epoch
         
-        optimizer       = optim.Adam(model_train.parameters(), lr, weight_decay = 5e-4)
+        optimizer       = optim.Adam(model_train.parameters(), lr)
         lr_scheduler    = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.96)
 
         train_dataset   = RetinanetDataset(train_lines, input_shape, num_classes, train = True)
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         start_epoch = Freeze_Epoch
         end_epoch   = UnFreeze_Epoch
         
-        optimizer       = optim.Adam(model_train.parameters(), lr, weight_decay = 5e-4)
+        optimizer       = optim.Adam(model_train.parameters(), lr)
         lr_scheduler    = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.96)
 
         train_dataset   = RetinanetDataset(train_lines, input_shape, num_classes, train = True)
