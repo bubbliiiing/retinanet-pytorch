@@ -256,7 +256,7 @@ if __name__ == "__main__":
         batch_size = Freeze_batch_size if Freeze_Train else Unfreeze_batch_size
 
         #-------------------------------------------------------------------#
-        #   判断当前batch_size与64的差别，自适应调整学习率
+        #   判断当前batch_size，自适应调整学习率
         #-------------------------------------------------------------------#
         nbs             = 16
         lr_limit_max    = 1e-3 if optimizer_type == 'adam' else 5e-2
@@ -305,7 +305,7 @@ if __name__ == "__main__":
                 batch_size = Unfreeze_batch_size
 
                 #-------------------------------------------------------------------#
-                #   判断当前batch_size与64的差别，自适应调整学习率
+                #   判断当前batch_size，自适应调整学习率
                 #-------------------------------------------------------------------#
                 nbs             = 16
                 lr_limit_max    = 1e-3 if optimizer_type == 'adam' else 5e-2
