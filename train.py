@@ -240,7 +240,7 @@ if __name__ == "__main__":
     #   创建retinanet模型
     #   训练前一定要修改classes_path和对应的txt文件
     #------------------------------------------------------#
-    model = retinanet(num_classes, phi, pretrained)
+    model = retinanet(num_classes, phi, pretrained, fp16)
     if model_path != '':
         if local_rank == 0:
             #------------------------------------------------------#

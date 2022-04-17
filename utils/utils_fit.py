@@ -37,7 +37,7 @@ def fit_one_epoch(model_train, model, focal_loss, loss_history, optimizer, epoch
             loss_value, _, _ = focal_loss(classification, regression, anchors, targets, cuda = cuda)
 
             loss_value.backward()
-            torch.nn.utils.clip_grad_norm_(model_train.parameters(), 1e-2)
+            torch.nn.utils.clip_grad_norm_(model_train.parameters(), 1e-1)
             optimizer.step()
         else:
             from torch.cuda.amp import autocast
@@ -55,7 +55,6 @@ def fit_one_epoch(model_train, model, focal_loss, loss_history, optimizer, epoch
             #   反向传播
             #----------------------#
             scaler.scale(loss_value).backward()
-            torch.nn.utils.clip_grad_norm_(model_train.parameters(), 1e-2)
             scaler.step(optimizer)
             scaler.update()
             

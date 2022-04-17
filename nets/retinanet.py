@@ -171,7 +171,7 @@ class Resnet(nn.Module):
         return [feat1,feat2,feat3]
 
 class retinanet(nn.Module):
-    def __init__(self, num_classes, phi, pretrained=False):
+    def __init__(self, num_classes, phi, pretrained=False, fp16=False):
         super(retinanet, self).__init__()
         self.pretrained = pretrained
         #-----------------------------------------#
@@ -208,9 +208,9 @@ class retinanet(nn.Module):
         self.regressionModel        = RegressionModel(256)
         self.classificationModel    = ClassificationModel(256, num_classes=num_classes)
         self.anchors = Anchors()
-        self._init_weights()
+        self._init_weights(fp16)
 
-    def _init_weights(self):
+    def _init_weights(self, fp16):
         if not self.pretrained:
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
@@ -222,7 +222,10 @@ class retinanet(nn.Module):
         
         prior = 0.01
         self.classificationModel.output.weight.data.fill_(0)
-        self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
+        if fp16:
+            self.classificationModel.output.bias.data.fill_(-2.9)
+        else:
+            self.classificationModel.output.bias.data.fill_(-math.log((1.0 - prior) / prior))
         self.regressionModel.output.weight.data.fill_(0)
         self.regressionModel.output.bias.data.fill_(0)
 
