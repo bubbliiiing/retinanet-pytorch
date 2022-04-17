@@ -54,3 +54,20 @@ def preprocess_input(image):
     image   -= mean
     image   /= std
     return image
+
+def download_weights(backbone, model_dir="./model_data"):
+    import os
+    from torch.hub import load_state_dict_from_url
+    
+    download_urls = {
+        '0': 'https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth',
+        '1': 'https://s3.amazonaws.com/pytorch/models/resnet34-333f7ec4.pth',
+        '2': 'https://s3.amazonaws.com/pytorch/models/resnet50-19c8e357.pth',
+        '3': 'https://s3.amazonaws.com/pytorch/models/resnet101-5d3b4d8f.pth',
+        '4': 'https://s3.amazonaws.com/pytorch/models/resnet152-b121ed2d.pth',
+    }
+    url = download_urls[backbone]
+    
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    load_state_dict_from_url(url, model_dir)
