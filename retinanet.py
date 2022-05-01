@@ -9,7 +9,7 @@ from PIL import ImageDraw, ImageFont
 
 from nets.retinanet import retinanet
 from utils.utils import (cvtColor, get_classes, preprocess_input,
-                         resize_image)
+                         resize_image, show_config)
 from utils.utils_bbox import decodebox, non_max_suppression
 
 
@@ -72,6 +72,7 @@ class Retinanet(object):
     #---------------------------------------------------#
     def __init__(self, **kwargs):
         self.__dict__.update(self._defaults)
+        show_config(**self._defaults)
         for name, value in kwargs.items():
             setattr(self, name, value)
         #---------------------------------------------------#
