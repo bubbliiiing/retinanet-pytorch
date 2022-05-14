@@ -21,6 +21,8 @@ from utils.dataloader import RetinanetDataset, retinanet_dataset_collate
 from utils.utils import download_weights, get_classes, show_config
 from utils.utils_fit import fit_one_epoch
 
+warnings.filterwarnings("ignore")
+
 '''
 训练自己的目标检测模型一定需要注意以下几点：
 1、训练前仔细检查自己的格式是否满足要求，该库要求数据集格式为VOC格式，需要准备好的内容有输入图片和标签
